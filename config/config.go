@@ -17,6 +17,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
@@ -24,12 +25,26 @@ import (
 
 const secretToken = "<secret>"
 
+type Cipher interface {
+	Encrypt(data []byte) ([]byte, error)
+}
+
+var SecretsCipher Cipher
+
 // Secret special type for storing secrets.
 type Secret string
 
 // MarshalYAML implements the yaml.Marshaler interface for Secrets.
 func (s Secret) MarshalYAML() (interface{}, error) {
 	if s != "" {
+		if SecretsCipher != nil {
+			b, err := SecretsCipher.Encrypt([]byte(s))
+			if err != nil {
+				return nil, err
+			}
+
+			return base64.StdEncoding.EncodeToString(b), nil
+		}
 		return secretToken, nil
 	}
 	return nil, nil
